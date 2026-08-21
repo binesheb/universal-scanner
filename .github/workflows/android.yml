@@ -2,11 +2,7 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '50 15 * * *'
 permissions:
   contents: read
   actions: write
