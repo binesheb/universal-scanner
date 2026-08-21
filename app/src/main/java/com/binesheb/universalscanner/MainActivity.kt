@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,7 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +30,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.weight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,9 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.google.mlkit.vision.barcode.Barcode
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -62,7 +65,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { cameraGranted = it }
 
-    // Temporal confirmation prevents ML Kit from publishing partial/unstable reads.
     private val candidates = ArrayDeque<Candidate>()
     private var lastAccepted: String? = null
     private var lastAcceptedAt = 0L
@@ -72,6 +74,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightStatusBars = false
+        WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
 
         cameraGranted = checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         if (!cameraGranted) permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -83,10 +89,7 @@ class MainActivity : ComponentActivity() {
         val providerFuture = ProcessCameraProvider.getInstance(this)
         providerFuture.addListener({
             val provider = providerFuture.get()
-
-            val preview = Preview.Builder().build().also {
-                it.surfaceProvider = previewView.surfaceProvider
-            }
+            val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
 
             val resolutionSelector = ResolutionSelector.Builder()
                 .setResolutionStrategy(
@@ -139,6 +142,7 @@ class MainActivity : ComponentActivity() {
                                 val value = code.rawValue?.trim().orEmpty()
                                 if (value.isEmpty()) null else code to value
                             }
+                            // Prefer the longest complete-looking read when ML Kit returns multiple candidates.
                             .maxByOrNull { (_, value) -> value.length }
 
                         if (best != null) confirmCandidate(best.second, best.first.format, now)
@@ -148,7 +152,7 @@ class MainActivity : ComponentActivity() {
 
             provider.unbindAll()
             provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
-        }, ContextCompat.getMainExecutor(this))
+        }, androidx.core.content.ContextCompat.getMainExecutor(this))
     }
 
     private fun confirmCandidate(value: String, format: Int, now: Long) {
@@ -159,7 +163,6 @@ class MainActivity : ComponentActivity() {
             val matching = candidates.count { it.value == value }
             if (matching < 2) return
 
-            // Same value can remain in front of the camera; don't spam the log.
             if (value == lastAccepted && now - lastAcceptedAt < 1200L) return
 
             lastAccepted = value
@@ -196,42 +199,23 @@ class MainActivity : ComponentActivity() {
     private fun ScannerScreen() {
         val background = Color(0xFF101114)
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(background)
-        ) {
+        Column(Modifier.fillMaxSize().background(background)) {
             Surface(
                 color = background,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
+                modifier = Modifier.fillMaxWidth().statusBarsPadding()
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "UNIVERSAL SCANNER",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "● LIVE",
-                        color = Color(0xFF55D66B),
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    Text("UNIVERSAL SCANNER", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    Text("● LIVE", color = Color(0xFF55D66B), style = MaterialTheme.typography.labelLarge)
                 }
             }
 
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 if (cameraGranted) {
@@ -246,32 +230,22 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize()
                     )
 
-                    Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth(0.86f)
-                            .height(150.dp)
-                    ) { }
+                    Canvas(modifier = Modifier.fillMaxWidth(0.88f).height(160.dp)) {
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.9f),
+                            style = Stroke(width = 3.dp.toPx()),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(18.dp.toPx())
+                        )
+                    }
                 } else {
                     Text("Camera permission required", color = Color.White)
                 }
             }
 
-            Surface(
-                color = background,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            ) {
+            Surface(color = background, modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
                 Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                     Text("LAST SCAN", color = Color.Gray, style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        text = lastScan,
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall,
-                        maxLines = 1
-                    )
+                    Text(lastScan, color = Color.White, style = MaterialTheme.typography.headlineSmall, maxLines = 1)
                     if (lastFormat.isNotEmpty()) {
                         Text(lastFormat, color = Color(0xFF55D66B), style = MaterialTheme.typography.labelMedium)
                     }
