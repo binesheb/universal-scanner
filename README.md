@@ -18,3 +18,6 @@ The workflow publishes `universal-scanner-release-apk`, containing `app-release.
 - Configurable API endpoint
 - Scanner identity and settings
 - Scan history export
+
+## Build trigger
+The Android release workflow runs automatically on every push to `main`.
