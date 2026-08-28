@@ -37,3 +37,7 @@ Do not use this reset in a working tree containing uncommitted changes.
 ## Automatic updates
 
 The app does not currently implement runtime self-updating. APK distribution should remain a controlled release/deployment step until a signed release channel and an in-app update design are established. The GitHub Actions workflow provides automated builds, not automatic installation on user devices.
+
+## Release provenance
+
+The current workflow publishes an unsigned APK as a short-lived GitHub Actions artifact, not as a GitHub Release. Treat the artifact as a build output for controlled testing or deployment and verify the workflow run and commit before installation. A signed, versioned GitHub Release channel should be introduced before any automated distribution is enabled.
