@@ -28,6 +28,25 @@ jobs:
         uses: gradle/actions/setup-gradle@48b5f213c81028ace310571dc5ec0fbbca0b2947 # v4.4.3
         with:
           gradle-version: '8.11.1'
+      - name: Verify documented version
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          gradle = Path("app/build.gradle.kts").read_text()
+          readme = Path("README.md").read_text()
+          version = re.search(r'versionName\s*=\s*"([^"]+)"', gradle)
+          code = re.search(r'versionCode\s*=\s*(\d+)', gradle)
+          documented = re.search(r'Version:\s*`([^`]+)`\s*\(versionCode\s*`(\d+)`\)', readme)
+          if not (version and code and documented):
+              raise SystemExit("Could not determine Gradle or README version metadata")
+          expected = (version.group(1), code.group(1))
+          actual = (documented.group(1), documented.group(2))
+          if actual != expected:
+              raise SystemExit(f"README version {actual} does not match Gradle version {expected}")
+          print(f"Version metadata verified: {expected[0]} ({expected[1]})")
+          PY
       - name: Build release APK
         run: gradle --no-daemon --stacktrace :app:assembleRelease
       - name: Generate APK checksum
