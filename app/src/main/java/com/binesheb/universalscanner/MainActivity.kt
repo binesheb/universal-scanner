@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.barcode.common.BarcodeScanner
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -24,6 +25,8 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var status: TextView
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var scanner: BarcodeScanner? = null
     private var lastValue: String? = null
     private var lastAcceptedAt = 0L
     private var count = 0
@@ -46,17 +49,19 @@ class MainActivity : AppCompatActivity() {
         val providerFuture = ProcessCameraProvider.getInstance(this)
         providerFuture.addListener({
             val provider = providerFuture.get()
+            cameraProvider = provider
             val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
-            val scanner = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build())
+            scanner?.close()
+            scanner = BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build())
             val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
             analysis.setAnalyzer(cameraExecutor) { proxy ->
                 val mediaImage = proxy.image
                 if (mediaImage == null) { proxy.close(); return@setAnalyzer }
                 val image = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
-                scanner.process(image).addOnSuccessListener { codes ->
+                scanner?.process(image)?.addOnSuccessListener { codes ->
                     val value = codes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue?.trim()
                     if (!value.isNullOrBlank()) accept(value)
-                }.addOnCompleteListener { proxy.close() }
+                }?.addOnCompleteListener { proxy.close() } ?: proxy.close()
             }
             provider.unbindAll()
             provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
@@ -73,5 +78,10 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread { status.text = "SCAN $count\n$value" }
     }
 
-    override fun onDestroy() { cameraExecutor.shutdown(); super.onDestroy() }
+    override fun onDestroy() {
+        cameraProvider?.unbindAll()
+        scanner?.close()
+        cameraExecutor.shutdown()
+        super.onDestroy()
+    }
 }
