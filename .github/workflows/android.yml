@@ -47,6 +47,8 @@ jobs:
               raise SystemExit(f"README version {actual} does not match Gradle version {expected}")
           print(f"Version metadata verified: {expected[0]} ({expected[1]})")
           PY
+      - name: Run Android lint
+        run: gradle --no-daemon --stacktrace :app:lint
       - name: Build release APK
         run: gradle --no-daemon --stacktrace :app:assembleRelease
       - name: Generate APK checksum
