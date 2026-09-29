@@ -5,7 +5,11 @@ plugins {
 
 android {
     namespace = "com.binesheb.universalscanner"
-    compileSdk = 36
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "com.binesheb.universalscanner"
