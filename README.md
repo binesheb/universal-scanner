@@ -3,7 +3,7 @@
 A lightweight Android barcode and QR scanner intended as a reusable foundation for logistics, package tracking, retail, and operational workflows.
 
 ## Current build
-- Version: `1.0.1` (versionCode `2`)
+- Version: `1.0.2` (versionCode `2`)
 - Live CameraX preview
 - ML Kit barcode and QR recognition
 - Duplicate suppression
