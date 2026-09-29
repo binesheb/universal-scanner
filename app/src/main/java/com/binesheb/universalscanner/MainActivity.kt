@@ -1,6 +1,7 @@
 package com.binesheb.universalscanner
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.ViewGroup
@@ -46,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @OptIn(ExperimentalGetImage::class)
+    @SuppressLint("UnsafeOptInUsageError")
     private fun startCamera(previewView: PreviewView? = null) {
         val view = previewView ?: findPreviewView() ?: return
         val providerFuture = ProcessCameraProvider.getInstance(this)
