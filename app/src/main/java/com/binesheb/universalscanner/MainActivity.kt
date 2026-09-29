@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) startCamera(previewView) else requestCamera.launch(Manifest.permission.CAMERA)
     }
 
+    @OptIn(ExperimentalGetImage::class)
     private fun startCamera(previewView: PreviewView? = null) {
         val view = previewView ?: findPreviewView() ?: return
         val providerFuture = ProcessCameraProvider.getInstance(this)
