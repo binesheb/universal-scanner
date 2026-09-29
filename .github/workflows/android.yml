@@ -52,7 +52,11 @@ jobs:
       - name: Build release APK
         run: gradle --no-daemon --stacktrace :app:assembleRelease
       - name: Generate APK checksum
-        run: sha256sum app/build/outputs/apk/release/*.apk > app/build/outputs/apk/release/SHA256SUMS.txt
+        working-directory: app/build/outputs/apk/release
+        run: |
+          apk="$(find . -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$apk"
+          sha256sum "$(basename "$apk")" > SHA256SUMS.txt
       - name: Verify APK checksum
         working-directory: app/build/outputs/apk/release
         run: sha256sum -c SHA256SUMS.txt
